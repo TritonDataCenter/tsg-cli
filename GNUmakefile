@@ -1,6 +1,6 @@
 GOFMT_FILES?=$$(find . -name '*.go' |grep -v vendor)
 
-default: check
+default: tools check
 
 fmt: ## Run gofmt across all go files
 	gofmt -w $(GOFMT_FILES)
