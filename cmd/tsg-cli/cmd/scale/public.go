@@ -9,13 +9,13 @@
 package scale
 
 import (
+	"github.com/joyent/tsg-cli/cmd/agent/scale"
 	tsgc "github.com/joyent/tsg-cli/cmd/config"
+	"github.com/joyent/tsg-cli/cmd/internal/command"
+	"github.com/joyent/tsg-cli/cmd/internal/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"github.com/joyent/tsg-cli/cmd/internal/command"
-	"github.com/joyent/tsg-cli/cmd/internal/config"
-	"github.com/joyent/tsg-cli/cmd/agent/scale"
 )
 
 var Cmd = &command.Command{
@@ -261,4 +261,3 @@ This option can be used multiple times.`
 		return nil
 	},
 }
-

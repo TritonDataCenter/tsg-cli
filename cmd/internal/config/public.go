@@ -32,4 +32,3 @@ const (
 
 	KeyImageId = "compute.image.id"
 )
-

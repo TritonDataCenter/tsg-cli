@@ -17,10 +17,10 @@ import (
 
 	"github.com/joyent/triton-go"
 	"github.com/joyent/triton-go/authentication"
+	"github.com/joyent/tsg-cli/cmd/internal/config"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	"github.com/joyent/tsg-cli/cmd/internal/config"
 )
 
 type TritonClientConfig struct {
@@ -41,7 +41,6 @@ func New() (*TritonClientConfig, error) {
 		})
 		if err != nil {
 			log.Fatal().Str("func", "initConfig").Msg(err.Error())
-			panic(err)
 			return nil, err
 		}
 	} else {
@@ -211,4 +210,3 @@ func GetMachineMetadata() map[string]string {
 func GetMachineUserdata() string {
 	return viper.GetString(config.KeyInstanceUserdata)
 }
-

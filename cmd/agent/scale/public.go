@@ -16,9 +16,9 @@ import (
 
 	"github.com/imdario/mergo"
 	tcc "github.com/joyent/triton-go/compute"
+	"github.com/joyent/tsg-cli/cmd/config"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/joyent/tsg-cli/cmd/config"
 )
 
 type AgentComputeClient struct {
@@ -200,4 +200,3 @@ func (a instanceSort) Less(i, j int) bool {
 	jtime := a[j].Created
 	return itime.Unix() < jtime.Unix()
 }
-
