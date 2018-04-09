@@ -9,13 +9,13 @@
 package scale
 
 import (
+	"github.com/joyent/tsg-cli/cmd/agent/scale"
 	tsgc "github.com/joyent/tsg-cli/cmd/config"
+	"github.com/joyent/tsg-cli/cmd/internal/command"
+	"github.com/joyent/tsg-cli/cmd/internal/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"github.com/joyent/tsg-cli/cmd/internal/command"
-	"github.com/joyent/tsg-cli/cmd/internal/config"
-	"github.com/joyent/tsg-cli/cmd/agent/scale"
 )
 
 var Cmd = &command.Command{
@@ -33,7 +33,7 @@ var Cmd = &command.Command{
 				return err
 			}
 
-			a, err := scale.NewGetComputeClient(c)
+			a, err := scale.NewComputeClient(c)
 			if err != nil {
 				return err
 			}
@@ -59,29 +59,17 @@ var Cmd = &command.Command{
 
 		{
 			const (
-				key          = config.KeyInstanceName
-				longName     = "name"
-				shortName    = "n"
+				key          = config.KeyTsgTemplateID
+				longName     = "template-id"
 				defaultValue = ""
-				description  = "Instance Name"
-			)
-
-			flags := parent.Cobra.Flags()
-			flags.StringP(longName, shortName, defaultValue, description)
-			viper.BindPFlag(key, flags.Lookup(longName))
-		}
-
-		{
-			const (
-				key          = config.KeyInstanceNamePrefix
-				longName     = "name-prefix"
-				defaultValue = ""
-				description  = "Instance Name Prefix"
+				description  = "TSG Template ID"
 			)
 
 			flags := parent.Cobra.Flags()
 			flags.String(longName, defaultValue, description)
 			viper.BindPFlag(key, flags.Lookup(longName))
+
+			parent.Cobra.MarkFlagRequired(longName)
 		}
 
 		{
@@ -133,19 +121,6 @@ var Cmd = &command.Command{
 				longName     = "state"
 				defaultValue = ""
 				description  = "Instance state (e.g. running)"
-			)
-
-			flags := parent.Cobra.Flags()
-			flags.String(longName, defaultValue, description)
-			viper.BindPFlag(key, flags.Lookup(longName))
-		}
-
-		{
-			const (
-				key          = config.KeyInstanceBrand
-				longName     = "brand"
-				defaultValue = ""
-				description  = "Instance brand (e.g. lx, kvm)"
 			)
 
 			flags := parent.Cobra.Flags()
@@ -261,4 +236,3 @@ This option can be used multiple times.`
 		return nil
 	},
 }
-

@@ -11,21 +11,20 @@ package scale
 import (
 	"context"
 	"fmt"
-
 	"sort"
 
 	"github.com/imdario/mergo"
 	tcc "github.com/joyent/triton-go/compute"
+	"github.com/joyent/tsg-cli/cmd/config"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/joyent/tsg-cli/cmd/config"
 )
 
 type AgentComputeClient struct {
 	client *tcc.ComputeClient
 }
 
-func NewGetComputeClient(cfg *config.TritonClientConfig) (*AgentComputeClient, error) {
+func NewComputeClient(cfg *config.TritonClientConfig) (*AgentComputeClient, error) {
 	computeClient, err := tcc.NewClient(cfg.Config)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error Creating Triton Compute Client")
@@ -67,6 +66,11 @@ func (c *AgentComputeClient) MaintainInstanceCount() error {
 				return err
 			}
 
+			err = c.TagInstance(instance.ID)
+			if err != nil {
+				return fmt.Errorf("error adding name tag to instance %s", instance.ID)
+			}
+
 			instances = append(instances, instance)
 		}
 	} else {
@@ -74,6 +78,30 @@ func (c *AgentComputeClient) MaintainInstanceCount() error {
 	}
 
 	return nil
+}
+
+func (c *AgentComputeClient) TagInstance(instanceID string) error {
+	params := &tcc.AddTagsInput{
+		ID: instanceID,
+	}
+
+	t := make(map[string]interface{}, 0)
+
+	templateID := config.GetTsgTemplateID()
+	if templateID != "" {
+		t["name"] = formulateInstanceNameTag(templateID, instanceID)
+	}
+
+	err := c.client.Instances().AddTags(context.Background(), params)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func formulateInstanceNameTag(templateID string, instanceID string) string {
+	return fmt.Sprintf("tsg-%s-%s", templateID[:8], instanceID[:8])
 }
 
 func (c *AgentComputeClient) GetInstanceList() ([]*tcc.Instance, error) {
@@ -107,16 +135,6 @@ func (c *AgentComputeClient) DeleteInstance(instanceID string) error {
 func (c *AgentComputeClient) CreateInstance() (*tcc.Instance, error) {
 	params := &tcc.CreateInstanceInput{
 		FirewallEnabled: config.GetMachineFirewall(),
-	}
-
-	name := config.GetMachineName()
-	if name != "" {
-		params.Name = name
-	}
-
-	namePrefix := config.GetMachineNamePrefix()
-	if namePrefix != "" {
-		params.NamePrefix = namePrefix
 	}
 
 	md := make(map[string]string, 0)
@@ -200,4 +218,3 @@ func (a instanceSort) Less(i, j int) bool {
 	jtime := a[j].Created
 	return itime.Unix() < jtime.Unix()
 }
-

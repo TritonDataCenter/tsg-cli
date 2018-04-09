@@ -14,14 +14,12 @@ const (
 	KeySshKeyMaterial = "general.key-material"
 	KeySshKeyID       = "general.key-id"
 
-	KeyTsgGroupName = "compute.tsg.name"
+	KeyTsgGroupName  = "compute.tsg.name"
+	KeyTsgTemplateID = "compute.tss.template-id"
 
-	KeyInstanceName         = "compute.instance.name"
 	KeyInstanceCount        = "compute.instance.count"
-	KeyInstanceNamePrefix   = "compute.instance.name-prefix"
 	KeyInstanceFirewall     = "compute.instance.firewall"
 	KeyInstanceState        = "compute.instance.state"
-	KeyInstanceBrand        = "compute.instance.brand"
 	KeyInstanceNetwork      = "compute.instance.networks"
 	KeyInstanceTag          = "compute.instance.tag"
 	KeyInstanceMetadata     = "compute.instance.metadata"
@@ -32,4 +30,3 @@ const (
 
 	KeyImageId = "compute.image.id"
 )
-
