@@ -17,10 +17,10 @@ import (
 
 	"github.com/joyent/triton-go"
 	"github.com/joyent/triton-go/authentication"
+	"github.com/joyent/tsg-cli/cmd/internal/config"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	"github.com/joyent/tsg-cli/cmd/internal/config"
 )
 
 type TritonClientConfig struct {
@@ -121,16 +121,8 @@ func GetTsgName() string {
 	return viper.GetString(config.KeyTsgGroupName)
 }
 
-func GetMachineName() string {
-	return viper.GetString(config.KeyInstanceName)
-}
-
-func GetMachineNamePrefix() string {
-	return viper.GetString(config.KeyInstanceNamePrefix)
-}
-
-func GetMachineBrand() string {
-	return viper.GetString(config.KeyInstanceBrand)
+func GetTsgTemplateID() string {
+	return viper.GetString(config.KeyTsgTemplateID)
 }
 
 func GetMachineFirewall() bool {
@@ -178,21 +170,6 @@ func GetMachineTags() map[string]string {
 	return nil
 }
 
-func GetSearchTags() map[string]interface{} {
-	if viper.IsSet(config.KeyInstanceTag) {
-		tags := make(map[string]interface{}, 0)
-		cfg := viper.GetStringSlice(config.KeyInstanceTag)
-		for _, i := range cfg {
-			m := strings.Split(i, "=")
-			tags[m[0]] = m[1]
-		}
-
-		return tags
-	}
-
-	return nil
-}
-
 func GetMachineMetadata() map[string]string {
 	if viper.IsSet(config.KeyInstanceMetadata) {
 		metadata := make(map[string]string, 0)
@@ -211,4 +188,3 @@ func GetMachineMetadata() map[string]string {
 func GetMachineUserdata() string {
 	return viper.GetString(config.KeyInstanceUserdata)
 }
-
