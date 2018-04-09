@@ -16,4 +16,3 @@ type Command struct {
 	Cobra *cobra.Command
 	Setup SetupFunc
 }
-

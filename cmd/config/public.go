@@ -41,7 +41,6 @@ func New() (*TritonClientConfig, error) {
 		})
 		if err != nil {
 			log.Fatal().Str("func", "initConfig").Msg(err.Error())
-			panic(err)
 			return nil, err
 		}
 	} else {
