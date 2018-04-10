@@ -15,7 +15,7 @@ const (
 	KeySshKeyID       = "general.key-id"
 
 	KeyTsgGroupName  = "compute.tsg.name"
-	KeyTsgTemplateID = "compute.tss.template-id"
+	KeyTsgTemplateID = "compute.tsg.template-id"
 
 	KeyInstanceCount        = "compute.instance.count"
 	KeyInstanceFirewall     = "compute.instance.firewall"

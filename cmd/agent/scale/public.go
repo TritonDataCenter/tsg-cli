@@ -45,36 +45,78 @@ func (c *AgentComputeClient) MaintainInstanceCount() error {
 	scaleCount := expectedInstances - runningInstances
 
 	if scaleCount < 0 {
-		log.Log().Str("func", "MaintainInstanceCount").Msg("Scaling Instances Down")
 		instancesToRemove := runningInstances - expectedInstances
 		for i := 1; i < instancesToRemove+1; i++ {
-
 			instance := instances[len(instances)-1]
+
 			err := c.DeleteInstance(instance.ID)
 			if err != nil {
+				log.Error().
+					Str("account_name", c.client.Client.AccountName).
+					Str("tsg_name", config.GetTsgName()).
+					Str("status", "failed").
+					Str("notification_type", "TSG_INSTANCE_TERMINATE_ERROR").
+					Str("description", fmt.Sprintf("Error deleting instance %s", instance.ID)).
+					Err(err)
 				return err
 			}
+
+			log.Log().
+				Str("account_name", c.client.Client.AccountName).
+				Str("tsg_name", config.GetTsgName()).
+				Str("status", "successful").
+				Str("notification_type", "TSG_INSTANCE_TERMINATE").
+				Str("description", fmt.Sprintf("Terminating instance %s", instance.ID)).
+				Msgf("An instance was deleted due to a difference between the expected and actual instance count")
 
 			instances = instances[:len(instances)-1]
 		}
 
 	} else if scaleCount > 0 {
-		log.Log().Str("func", "MaintainInstanceCount").Msg("Scaling Instances Up")
 		for i := 0; i < scaleCount; i++ {
+
 			instance, err := c.CreateInstance()
 			if err != nil {
+				log.Error().
+					Str("account_name", c.client.Client.AccountName).
+					Str("tsg_name", config.GetTsgName()).
+					Str("status", "failed").
+					Str("notification_type", "TSG_INSTANCE_LAUNCH_ERROR").
+					Str("description", "Error launching new instance").
+					Err(err)
 				return err
 			}
 
 			err = c.TagInstance(instance.ID)
 			if err != nil {
-				return fmt.Errorf("error adding name tag to instance %s", instance.ID)
+				log.Error().
+					Str("account_name", c.client.Client.AccountName).
+					Str("tsg_name", config.GetTsgName()).
+					Str("status", "failed").
+					Str("notification_type", "TSG_INSTANCE_LAUNCH_ERROR").
+					Str("description", "Error launching new instance").
+					Err(err)
+				return err
 			}
+
+			log.Info().
+				Str("account_name", c.client.Client.AccountName).
+				Str("tsg_name", config.GetTsgName()).
+				Str("status", "successful").
+				Str("notification_type", "TSG_INSTANCE_LAUNCH").
+				Str("description", fmt.Sprintf("Launching new instance %s", instance.ID)).
+				Msgf("An instance was created due to a difference between the expected and actual instance count")
 
 			instances = append(instances, instance)
 		}
 	} else {
-		log.Log().Str("func", "MaintainInstanceCount").Msg("No-op")
+		log.Info().
+			Str("account_name", c.client.Client.AccountName).
+			Str("tsg_name", config.GetTsgName()).
+			Str("status", "successful").
+			Str("notification_type", "TSG_INSTANCE_NO_OP").
+			Str("description", fmt.Sprintf("Expected %d instances in TSG: %q - found %d instances", expectedInstances, config.GetTsgName(), runningInstances)).
+			Msgf("TSG is healthy")
 	}
 
 	return nil
@@ -85,12 +127,14 @@ func (c *AgentComputeClient) TagInstance(instanceID string) error {
 		ID: instanceID,
 	}
 
-	t := make(map[string]interface{}, 0)
+	t := make(map[string]string, 0)
 
 	templateID := config.GetTsgTemplateID()
 	if templateID != "" {
 		t["name"] = formulateInstanceNameTag(templateID, instanceID)
 	}
+
+	params.Tags = t
 
 	err := c.client.Instances().AddTags(context.Background(), params)
 	if err != nil {
@@ -126,7 +170,6 @@ func (c *AgentComputeClient) GetInstanceList() ([]*tcc.Instance, error) {
 }
 
 func (c *AgentComputeClient) DeleteInstance(instanceID string) error {
-	log.Log().Str("func", "DeleteInstance").Msg(fmt.Sprintf("Deleting Instance %q", instanceID))
 	return c.client.Instances().Delete(context.Background(), &tcc.DeleteInstanceInput{
 		ID: instanceID,
 	})
@@ -193,7 +236,6 @@ func (c *AgentComputeClient) CreateInstance() (*tcc.Instance, error) {
 		return nil, err
 	}
 
-	log.Log().Str("func", "CreateInstance").Msg(fmt.Sprintf("Created Instance %q", machine.ID))
 	return machine, nil
 }
 
