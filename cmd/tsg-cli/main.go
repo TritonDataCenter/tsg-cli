@@ -12,6 +12,7 @@ import (
 	"os"
 
 	"github.com/joyent/tsg-cli/cmd/tsg-cli/cmd"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/sean-/conswriter"
 )
@@ -23,6 +24,7 @@ func main() {
 	}()
 
 	if err := cmd.Execute(); err != nil {
+		logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 		log.Error().Err(err).Msg("unable to run")
 		os.Exit(1)
 	}
