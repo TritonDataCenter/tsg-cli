@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"sort"
 
+	"sync"
+
 	"github.com/imdario/mergo"
 	tcc "github.com/joyent/triton-go/compute"
 	"github.com/joyent/tsg-cli/cmd/config"
@@ -35,6 +37,9 @@ func NewComputeClient(cfg *config.TritonClientConfig) (*AgentComputeClient, erro
 }
 
 func (c *AgentComputeClient) MaintainInstanceCount() error {
+	var instanceDeleteWaitGroup sync.WaitGroup
+	var instanceCreateWaitGroup sync.WaitGroup
+
 	instances, err := c.GetInstanceList()
 	if err != nil {
 		return err
@@ -45,70 +50,94 @@ func (c *AgentComputeClient) MaintainInstanceCount() error {
 	scaleCount := expectedInstances - runningInstances
 
 	if scaleCount < 0 {
+
 		instancesToRemove := runningInstances - expectedInstances
+		deleteInstancesErrChan := make(chan error)
+		instanceDeleteWaitGroup.Add(instancesToRemove)
+
 		for i := 1; i < instancesToRemove+1; i++ {
 			instance := instances[len(instances)-1]
 
-			err := c.DeleteInstance(instance.ID)
-			if err != nil {
-				log.Error().
+			go func(w *sync.WaitGroup) {
+				err := c.DeleteInstance(instance.ID)
+				if err != nil {
+					log.Error().
+						Str("account_name", c.client.Client.AccountName).
+						Str("tsg_name", config.GetTsgName()).
+						Str("status", "failed").
+						Str("notification_type", "TSG_INSTANCE_TERMINATE_ERROR").
+						Str("description", fmt.Sprintf("Error deleting instance %s", instance.ID)).
+						Err(err)
+					deleteInstancesErrChan <- err
+				}
+
+				log.Log().
 					Str("account_name", c.client.Client.AccountName).
 					Str("tsg_name", config.GetTsgName()).
-					Str("status", "failed").
-					Str("notification_type", "TSG_INSTANCE_TERMINATE_ERROR").
-					Str("description", fmt.Sprintf("Error deleting instance %s", instance.ID)).
-					Err(err)
-				return err
-			}
+					Str("status", "successful").
+					Str("notification_type", "TSG_INSTANCE_TERMINATE").
+					Str("description", fmt.Sprintf("Terminating instance %s", instance.ID)).
+					Msgf("An instance was deleted due to a difference between the expected and actual instance count")
 
-			log.Log().
-				Str("account_name", c.client.Client.AccountName).
-				Str("tsg_name", config.GetTsgName()).
-				Str("status", "successful").
-				Str("notification_type", "TSG_INSTANCE_TERMINATE").
-				Str("description", fmt.Sprintf("Terminating instance %s", instance.ID)).
-				Msgf("An instance was deleted due to a difference between the expected and actual instance count")
+				w.Done()
+
+			}(&instanceDeleteWaitGroup)
 
 			instances = instances[:len(instances)-1]
 		}
 
+		instanceDeleteWaitGroup.Wait()
+
 	} else if scaleCount > 0 {
+
+		createInstancesErrChan := make(chan error)
+		instanceCreateWaitGroup.Add(scaleCount)
+
 		for i := 0; i < scaleCount; i++ {
+			var createdInstance *tcc.Instance
+			go func(w *sync.WaitGroup) {
+				instance, err := c.CreateInstance()
+				if err != nil {
+					log.Error().
+						Str("account_name", c.client.Client.AccountName).
+						Str("tsg_name", config.GetTsgName()).
+						Str("status", "failed").
+						Str("notification_type", "TSG_INSTANCE_LAUNCH_ERROR").
+						Str("description", "Error launching new instance").
+						Err(err)
+					createInstancesErrChan <- err
+				}
 
-			instance, err := c.CreateInstance()
-			if err != nil {
-				log.Error().
+				err = c.TagInstance(instance.ID)
+				if err != nil {
+					log.Error().
+						Str("account_name", c.client.Client.AccountName).
+						Str("tsg_name", config.GetTsgName()).
+						Str("status", "failed").
+						Str("notification_type", "TSG_INSTANCE_LAUNCH_ERROR").
+						Str("description", "Error launching new instance").
+						Err(err)
+					createInstancesErrChan <- err
+				}
+
+				log.Info().
 					Str("account_name", c.client.Client.AccountName).
 					Str("tsg_name", config.GetTsgName()).
-					Str("status", "failed").
-					Str("notification_type", "TSG_INSTANCE_LAUNCH_ERROR").
-					Str("description", "Error launching new instance").
-					Err(err)
-				return err
-			}
+					Str("status", "successful").
+					Str("notification_type", "TSG_INSTANCE_LAUNCH").
+					Str("description", fmt.Sprintf("Launching new instance %s", instance.ID)).
+					Msgf("An instance was created due to a difference between the expected and actual instance count")
 
-			err = c.TagInstance(instance.ID)
-			if err != nil {
-				log.Error().
-					Str("account_name", c.client.Client.AccountName).
-					Str("tsg_name", config.GetTsgName()).
-					Str("status", "failed").
-					Str("notification_type", "TSG_INSTANCE_LAUNCH_ERROR").
-					Str("description", "Error launching new instance").
-					Err(err)
-				return err
-			}
+				w.Done()
 
-			log.Info().
-				Str("account_name", c.client.Client.AccountName).
-				Str("tsg_name", config.GetTsgName()).
-				Str("status", "successful").
-				Str("notification_type", "TSG_INSTANCE_LAUNCH").
-				Str("description", fmt.Sprintf("Launching new instance %s", instance.ID)).
-				Msgf("An instance was created due to a difference between the expected and actual instance count")
+				createdInstance = instance
 
-			instances = append(instances, instance)
+			}(&instanceCreateWaitGroup)
+
+			instances = append(instances, createdInstance)
 		}
+
+		instanceCreateWaitGroup.Wait()
 	} else {
 		log.Info().
 			Str("account_name", c.client.Client.AccountName).
