@@ -193,6 +193,11 @@ func (c *AgentComputeClient) CreateInstance() (*tcc.Instance, error) {
 		tags["tsg.name"] = tsgName
 	}
 
+	tsgTemplateID := config.GetTsgTemplateID()
+	if tsgTemplateID != "" {
+		tags["tsg.template"] = tsgTemplateID
+	}
+
 	networks := config.GetMachineNetworks()
 	if len(networks) > 0 {
 		params.Networks = networks
