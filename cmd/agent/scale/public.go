@@ -75,7 +75,9 @@ func (c *AgentComputeClient) MaintainInstanceCount() error {
 	} else if scaleCount > 0 {
 		for i := 0; i < scaleCount; i++ {
 
-			instance, err := c.CreateInstance()
+			templateID := config.GetTsgTemplateID()
+
+			instance, err := c.CreateInstance(templateID)
 			if err != nil {
 				log.Error().
 					Str("account_name", c.client.Client.AccountName).
@@ -87,7 +89,7 @@ func (c *AgentComputeClient) MaintainInstanceCount() error {
 				return err
 			}
 
-			err = c.TagInstance(instance.ID)
+			err = c.TagInstance(instance.ID, templateID)
 			if err != nil {
 				log.Error().
 					Str("account_name", c.client.Client.AccountName).
@@ -122,17 +124,13 @@ func (c *AgentComputeClient) MaintainInstanceCount() error {
 	return nil
 }
 
-func (c *AgentComputeClient) TagInstance(instanceID string) error {
+func (c *AgentComputeClient) TagInstance(instanceID string, templateID string) error {
 	params := &tcc.AddTagsInput{
 		ID: instanceID,
 	}
 
 	t := make(map[string]string, 0)
-
-	templateID := config.GetTsgTemplateID()
-	if templateID != "" {
-		t["name"] = formulateInstanceNameTag(templateID, instanceID)
-	}
+	t["name"] = formulateInstanceNameTag(templateID, instanceID)
 
 	params.Tags = t
 
@@ -175,13 +173,14 @@ func (c *AgentComputeClient) DeleteInstance(instanceID string) error {
 	})
 }
 
-func (c *AgentComputeClient) CreateInstance() (*tcc.Instance, error) {
+func (c *AgentComputeClient) CreateInstance(templateID string) (*tcc.Instance, error) {
 	params := &tcc.CreateInstanceInput{
 		FirewallEnabled: config.GetMachineFirewall(),
 	}
 
 	md := make(map[string]string, 0)
 	tags := make(map[string]string, 0)
+	tags["tsg.template"] = templateID
 
 	userdata := config.GetMachineUserdata()
 	if userdata != "" {
@@ -191,11 +190,6 @@ func (c *AgentComputeClient) CreateInstance() (*tcc.Instance, error) {
 	tsgName := config.GetTsgName()
 	if tsgName != "" {
 		tags["tsg.name"] = tsgName
-	}
-
-	tsgTemplateID := config.GetTsgTemplateID()
-	if tsgTemplateID != "" {
-		tags["tsg.template"] = tsgTemplateID
 	}
 
 	networks := config.GetMachineNetworks()
