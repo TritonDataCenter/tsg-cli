@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"sort"
 
+	"time"
+
 	"github.com/imdario/mergo"
 	tcc "github.com/joyent/triton-go/compute"
 	"github.com/joyent/tsg-cli/cmd/config"
@@ -233,6 +235,26 @@ func (c *AgentComputeClient) CreateInstance(templateID string) (*tcc.Instance, e
 	machine, err := c.client.Instances().Create(context.Background(), params)
 	if err != nil {
 		return nil, err
+	}
+
+	state := make(chan *tcc.Instance, 1)
+	go func(createdID string) {
+		for {
+			time.Sleep(1 * time.Second)
+			instance, err := c.client.Instances().Get(context.Background(), &tcc.GetInstanceInput{
+				ID: createdID,
+			})
+			if err != nil {
+				log.Info().Msgf("error getting Instance %q", instance.ID)
+			}
+			if instance.State == "running" {
+				state <- instance
+			}
+		}
+	}(machine.ID)
+
+	select {
+	case <-state:
 	}
 
 	return machine, nil
