@@ -238,23 +238,34 @@ func (c *AgentComputeClient) CreateInstance(templateID string) (*tcc.Instance, e
 	}
 
 	state := make(chan *tcc.Instance, 1)
-	go func(createdID string) {
+	stop := make(chan struct{}, 1)
+
+	go func() {
 		for {
-			time.Sleep(1 * time.Second)
-			instance, err := c.client.Instances().Get(context.Background(), &tcc.GetInstanceInput{
-				ID: createdID,
-			})
-			if err != nil {
-				log.Info().Msgf("error getting Instance %q", instance.ID)
-			}
-			if instance.State == "running" {
-				state <- instance
+			select {
+			default:
+				time.Sleep(1 * time.Second)
+				instance, err := c.client.Instances().Get(context.Background(), &tcc.GetInstanceInput{
+					ID: machine.ID,
+				})
+				if err != nil {
+					log.Info().Msgf("error getting instance %q", instance.ID)
+				}
+				if instance.State == "running" {
+					state <- instance
+					return
+				}
+			case <-stop:
+				return
 			}
 		}
-	}(machine.ID)
+	}()
 
 	select {
 	case <-state:
+	case <-time.After(5 * time.Minute):
+		close(stop)
+		return nil, fmt.Errorf("timed out waiting for %q to become ready", machine.ID)
 	}
 
 	return machine, nil
