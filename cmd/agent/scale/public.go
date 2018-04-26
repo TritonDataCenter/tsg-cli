@@ -58,18 +58,18 @@ func (c *AgentComputeClient) MaintainInstanceCount() error {
 					Str("tsg_name", config.GetTsgName()).
 					Str("status", "failed").
 					Str("notification_type", "TSG_INSTANCE_TERMINATE_ERROR").
-					Str("description", fmt.Sprintf("Error deleting instance %s", instance.ID)).
+					Str("description", fmt.Sprintf("Error deleting instance: %s", instance.ID)).
 					Err(err)
 				return err
 			}
 
-			log.Log().
+			log.Info().
 				Str("account_name", c.client.Client.AccountName).
 				Str("tsg_name", config.GetTsgName()).
 				Str("status", "successful").
 				Str("notification_type", "TSG_INSTANCE_TERMINATE").
-				Str("description", fmt.Sprintf("Terminating instance %s", instance.ID)).
-				Msgf("An instance was deleted due to a difference between the expected and actual instance count")
+				Str("description", fmt.Sprintf("Terminating an instance: %s", instance.ID)).
+				Msgf("An instance was deleted due to a difference between the expected and actual instance count.")
 
 			instances = instances[:len(instances)-1]
 		}
@@ -86,7 +86,7 @@ func (c *AgentComputeClient) MaintainInstanceCount() error {
 					Str("tsg_name", config.GetTsgName()).
 					Str("status", "failed").
 					Str("notification_type", "TSG_INSTANCE_LAUNCH_ERROR").
-					Str("description", "Error launching new instance").
+					Str("description", fmt.Sprintf("Error launching new instance using template: %s", templateID)).
 					Err(err)
 				return err
 			}
@@ -98,7 +98,7 @@ func (c *AgentComputeClient) MaintainInstanceCount() error {
 					Str("tsg_name", config.GetTsgName()).
 					Str("status", "failed").
 					Str("notification_type", "TSG_INSTANCE_LAUNCH_ERROR").
-					Str("description", "Error launching new instance").
+					Str("description", fmt.Sprintf("Error launching new instance using template: %s", templateID)).
 					Err(err)
 				return err
 			}
@@ -108,8 +108,8 @@ func (c *AgentComputeClient) MaintainInstanceCount() error {
 				Str("tsg_name", config.GetTsgName()).
 				Str("status", "successful").
 				Str("notification_type", "TSG_INSTANCE_LAUNCH").
-				Str("description", fmt.Sprintf("Launching new instance %s", instance.ID)).
-				Msgf("An instance was created due to a difference between the expected and actual instance count")
+				Str("description", fmt.Sprintf("Launching an instance: %s", instance.ID)).
+				Msgf("An instance was created due to a difference between the expected and actual instance count.")
 
 			instances = append(instances, instance)
 		}
@@ -119,8 +119,8 @@ func (c *AgentComputeClient) MaintainInstanceCount() error {
 			Str("tsg_name", config.GetTsgName()).
 			Str("status", "successful").
 			Str("notification_type", "TSG_INSTANCE_NO_OP").
-			Str("description", fmt.Sprintf("Expected %d instances in TSG: %q - found %d instances", expectedInstances, config.GetTsgName(), runningInstances)).
-			Msgf("TSG is healthy")
+			Str("description", fmt.Sprintf("Expected %d instances in TSG: %q - found %d instances.", expectedInstances, config.GetTsgName(), runningInstances)).
+			Msgf("TSG is healthy.")
 	}
 
 	return nil
@@ -249,7 +249,7 @@ func (c *AgentComputeClient) CreateInstance(templateID string) (*tcc.Instance, e
 					ID: machine.ID,
 				})
 				if err != nil {
-					log.Info().Msgf("error getting instance %q", instance.ID)
+					fmt.Printf("Error getting instance: %s", instance.ID)
 				}
 				if instance.State == "running" {
 					state <- instance
