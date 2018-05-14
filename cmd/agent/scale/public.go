@@ -184,7 +184,10 @@ func (c *AgentComputeClient) CreateInstance(templateID string) (*tcc.Instance, e
 	tags := make(map[string]string, 0)
 	tags["tsg.template"] = templateID
 
-	userdata := config.GetMachineUserdata()
+	userdata, err := config.GetMachineUserdata()
+	if err != nil {
+		return nil, err
+	}
 	if userdata != "" {
 		md["user-data"] = userdata
 	}
@@ -213,7 +216,10 @@ func (c *AgentComputeClient) CreateInstance(templateID string) (*tcc.Instance, e
 		params.Tags = tags
 	}
 
-	metadata := config.GetMachineMetadata()
+	metadata, err := config.GetMachineMetadata()
+	if err != nil {
+		return nil, err
+	}
 	if metadata != nil {
 		mergo.Merge(&md, metadata)
 	}

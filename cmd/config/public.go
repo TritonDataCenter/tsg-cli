@@ -9,6 +9,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
@@ -33,14 +34,18 @@ func New() (*TritonClientConfig, error) {
 	var signer authentication.Signer
 	var err error
 
-	keyMaterial := GetTritonKeyMaterial()
+	keyMaterial, err := GetTritonKeyMaterial()
+	if err != nil {
+		return nil, errors.Wrap(err, "error decoding key material from a Base64 encoded value")
+	}
+
 	if keyMaterial == "" {
 		signer, err = authentication.NewSSHAgentSigner(authentication.SSHAgentSignerInput{
 			KeyID:       GetTritonKeyID(),
 			AccountName: GetTritonAccount(),
 		})
 		if err != nil {
-			log.Fatal().Str("func", "initConfig").Msg(err.Error())
+			log.Error().Str("func", "initConfig").Msg(err.Error())
 			return nil, err
 		}
 	} else {
@@ -92,8 +97,15 @@ func GetTritonUrl() string {
 	return viper.GetString(config.KeyUrl)
 }
 
-func GetTritonKeyMaterial() string {
-	return viper.GetString(config.KeySshKeyMaterial)
+func GetTritonKeyMaterial() (string, error) {
+	value := viper.GetString(config.KeySshKeyMaterial)
+
+	data, err := decodeBase64(value)
+	if err != nil {
+		return "", err
+	}
+
+	return data, nil
 }
 
 func GetTritonAccount() string {
@@ -169,21 +181,39 @@ func GetMachineTags() map[string]string {
 	return nil
 }
 
-func GetMachineMetadata() map[string]string {
+func GetMachineMetadata() (map[string]string, error) {
 	if viper.IsSet(config.KeyInstanceMetadata) {
 		metadata := make(map[string]string, 0)
 		cfg := viper.GetStringSlice(config.KeyInstanceMetadata)
 		for _, i := range cfg {
-			m := strings.Split(i, "=")
+			data, err := decodeBase64(i)
+			if err != nil {
+				return nil, err
+			}
+			m := strings.Split(data, "=")
 			metadata[m[0]] = m[1]
 		}
 
-		return metadata
+		return metadata, nil
 	}
-
-	return nil
+	return nil, nil
 }
 
-func GetMachineUserdata() string {
-	return viper.GetString(config.KeyInstanceUserdata)
+func GetMachineUserdata() (string, error) {
+	value := viper.GetString(config.KeyInstanceUserdata)
+
+	data, err := decodeBase64(value)
+	if err != nil {
+		return "", err
+	}
+	return data, nil
+}
+
+func decodeBase64(s string) (string, error) {
+	bytes, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return "", err
+
+	}
+	return string(bytes), nil
 }
